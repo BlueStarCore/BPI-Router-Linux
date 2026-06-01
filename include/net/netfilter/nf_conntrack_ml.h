@@ -5,9 +5,10 @@
  *
  * Stored as a conntrack extension (NF_CT_EXT_ML). Packet/byte counts come from
  * the ACCT extension; this holds the features ACCT/TSTAMP do not (timing,
- * packet-length spread, accumulated TCP flags) plus the score the ML daemon
- * writes back. Populated per-packet by the pkt_forward hook; exported on flow
- * teardown via ctnetlink. Fields are indexed by direction:
+ * packet-length spread, accumulated TCP flags, the flow's in/out interface)
+ * plus the score the ML daemon writes back. Populated per-packet by the
+ * pkt_forward hook; exported as CTA_ML on the ctnetlink dump path (GET/DUMP),
+ * so CONFIG_NF_CONNTRACK_EVENTS is not required. Fields indexed by direction:
  * [IP_CT_DIR_ORIGINAL]=0, [IP_CT_DIR_REPLY]=1.
  */
 #ifndef _NF_CONNTRACK_ML_H
