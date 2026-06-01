@@ -25,6 +25,8 @@ struct nf_conn_ml {
 	u16	len_min[2];	/* smallest L3 packet length, per direction  */
 	u16	len_max[2];	/* largest  L3 packet length, per direction  */
 	s32	ml_score;	/* score written back by the ML daemon       */
+	u16	iif;		/* ingress ifindex, original direction (0=unset) */
+	u16	oif;		/* egress  ifindex, original direction (0=unset) */
 };
 
 static inline struct nf_conn_ml *nf_conn_ml_find(const struct nf_conn *ct)
