@@ -100,8 +100,10 @@ void *nf_ct_ext_add(struct nf_conn *ct, enum nf_ct_ext_id id, gfp_t gfp)
 	/* Conntrack must not be confirmed to avoid races on reallocation. */
 	WARN_ON(nf_ct_is_confirmed(ct));
 
-	/* struct nf_ct_ext uses u8 to store offsets/size */
-	BUILD_BUG_ON(total_extension_size() > 255u);
+	/* struct nf_ct_ext stores offsets and the total length in u16; this
+	 * bounds the combined extension block so every offset and the length
+	 * fit those fields. */
+	BUILD_BUG_ON(total_extension_size() > 65535u);
 
 	if (ct->ext) {
 		const struct nf_ct_ext *old = ct->ext;
