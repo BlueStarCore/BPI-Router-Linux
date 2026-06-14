@@ -34,6 +34,14 @@ static struct nf_hook_ops *filter_ops __read_mostly;
 static bool forward __read_mostly = true;
 module_param(forward, bool, 0000);
 
+/*
+ * Stargazer NGFW: default INPUT to DROP so the firewall is secure from
+ * the instant the filter table is created — no window of ACCEPT policy.
+ * Userspace (mgmtd) adds ACCEPT rules for lo, ESTABLISHED/RELATED, etc.
+ */
+static bool input_drop __read_mostly = true;
+module_param(input_drop, bool, 0000);
+
 static int iptable_filter_table_init(struct net *net)
 {
 	struct ipt_replace *repl;
@@ -42,6 +50,10 @@ static int iptable_filter_table_init(struct net *net)
 	repl = ipt_alloc_initial_table(&packet_filter);
 	if (repl == NULL)
 		return -ENOMEM;
+	/* Entry 0 is the INPUT hook */
+	if (input_drop)
+		((struct ipt_standard *)repl->entries)[0].target.verdict =
+			NF_DROP - 1;
 	/* Entry 1 is the FORWARD hook */
 	((struct ipt_standard *)repl->entries)[1].target.verdict =
 		forward ? -NF_ACCEPT - 1 : NF_DROP - 1;
@@ -53,7 +65,7 @@ static int iptable_filter_table_init(struct net *net)
 
 static int __net_init iptable_filter_net_init(struct net *net)
 {
-	if (!forward)
+	if (!forward || input_drop)
 		return iptable_filter_table_init(net);
 
 	return 0;

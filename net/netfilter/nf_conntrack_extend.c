@@ -23,6 +23,7 @@
 #include <net/netfilter/nf_conntrack_labels.h>
 #include <net/netfilter/nf_conntrack_synproxy.h>
 #include <net/netfilter/nf_conntrack_act_ct.h>
+#include <net/netfilter/nf_conntrack_ml.h>
 #include <net/netfilter/nf_nat.h>
 
 #define NF_CT_EXT_PREALLOC	128u /* conntrack events are on by default */
@@ -54,12 +55,13 @@ static const u8 nf_ct_ext_type_len[NF_CT_EXT_NUM] = {
 #if IS_ENABLED(CONFIG_NET_ACT_CT)
 	[NF_CT_EXT_ACT_CT] = sizeof(struct nf_conn_act_ct_ext),
 #endif
+	[NF_CT_EXT_ML] = sizeof(struct nf_conn_ml),
 };
 
 static __always_inline unsigned int total_extension_size(void)
 {
 	/* remember to add new extensions below */
-	BUILD_BUG_ON(NF_CT_EXT_NUM > 10);
+	BUILD_BUG_ON(NF_CT_EXT_NUM > 11);	/* +1 for NF_CT_EXT_ML */
 
 	return sizeof(struct nf_ct_ext) +
 	       sizeof(struct nf_conn_help)
@@ -86,6 +88,7 @@ static __always_inline unsigned int total_extension_size(void)
 #if IS_ENABLED(CONFIG_NET_ACT_CT)
 		+ sizeof(struct nf_conn_act_ct_ext)
 #endif
+		+ sizeof(struct nf_conn_ml)
 	;
 }
 
@@ -97,8 +100,10 @@ void *nf_ct_ext_add(struct nf_conn *ct, enum nf_ct_ext_id id, gfp_t gfp)
 	/* Conntrack must not be confirmed to avoid races on reallocation. */
 	WARN_ON(nf_ct_is_confirmed(ct));
 
-	/* struct nf_ct_ext uses u8 to store offsets/size */
-	BUILD_BUG_ON(total_extension_size() > 255u);
+	/* struct nf_ct_ext stores offsets and the total length in u16; this
+	 * bounds the combined extension block so every offset and the length
+	 * fit those fields. */
+	BUILD_BUG_ON(total_extension_size() > 65535u);
 
 	if (ct->ext) {
 		const struct nf_ct_ext *old = ct->ext;
