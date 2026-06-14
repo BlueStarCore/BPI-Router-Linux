@@ -44,6 +44,7 @@
 #include <net/netfilter/nf_conntrack_acct.h>
 #include <net/netfilter/nf_conntrack_zones.h>
 #include <net/netfilter/nf_conntrack_timestamp.h>
+#include <net/netfilter/nf_conntrack_ml.h>
 #include <net/netfilter/nf_conntrack_labels.h>
 #include <net/netfilter/nf_conntrack_synproxy.h>
 #if IS_ENABLED(CONFIG_NF_NAT)
@@ -333,6 +334,21 @@ nla_put_failure:
 	return -1;
 }
 
+/* Stargazer: dump the per-flow ML feature vector (NF_CT_EXT_ML) as a single
+ * binary CTA_ML attribute (struct nf_conn_ml, host byte order — consumed by
+ * the same-host ML/collector daemon over a ctnetlink dump). */
+static int
+ctnetlink_dump_ml(struct sk_buff *skb, const struct nf_conn *ct)
+{
+	const struct nf_conn_ml *ml = nf_conn_ml_find(ct);
+
+	if (!ml)
+		return 0;
+	if (nla_put(skb, CTA_ML, sizeof(*ml), ml))
+		return -1;
+	return 0;
+}
+
 #ifdef CONFIG_NF_CONNTRACK_MARK
 static int ctnetlink_dump_mark(struct sk_buff *skb, const struct nf_conn *ct,
 			       bool dump)
@@ -543,7 +559,8 @@ static int ctnetlink_dump_extinfo(struct sk_buff *skb,
 	    ctnetlink_dump_helpinfo(skb, ct) < 0 ||
 	    ctnetlink_dump_labels(skb, ct) < 0 ||
 	    ctnetlink_dump_ct_seq_adj(skb, ct) < 0 ||
-	    ctnetlink_dump_ct_synproxy(skb, ct) < 0)
+	    ctnetlink_dump_ct_synproxy(skb, ct) < 0 ||
+	    ctnetlink_dump_ml(skb, ct) < 0)
 		return -1;
 
 	return 0;

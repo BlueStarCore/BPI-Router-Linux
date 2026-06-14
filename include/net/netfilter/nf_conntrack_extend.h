@@ -31,13 +31,20 @@ enum nf_ct_ext_id {
 #if IS_ENABLED(CONFIG_NET_ACT_CT)
 	NF_CT_EXT_ACT_CT,
 #endif
+	NF_CT_EXT_ML,		/* Stargazer per-flow ML feature vector */
 	NF_CT_EXT_NUM,
 };
 
-/* Extensions: optional stuff which isn't permanently in struct. */
+/* Extensions: optional stuff which isn't permanently in struct.
+ *
+ * offset[] holds each extension's byte offset within data[]; len holds the
+ * total size of the block. Both are u16, and nf_ct_ext_add() enforces
+ * total_extension_size() <= U16_MAX at compile time (BUILD_BUG_ON), so every
+ * offset and the length always fit these fields.
+ */
 struct nf_ct_ext {
-	u8 offset[NF_CT_EXT_NUM];
-	u8 len;
+	u16 offset[NF_CT_EXT_NUM];
+	u16 len;
 	unsigned int gen_id;
 	char data[] __aligned(8);
 };
